@@ -71,6 +71,8 @@ func (fs *ImageFs) getData(link string, base string) (DirContents, error) {
 			fs.Attrs[fullpath] = fuse.Attr{
 				Mode:  fuse.S_IFREG | 0644,
 				Size:  uint64(len(data.Data)),
+				Atime: uint64(time.Now().Unix()),
+				Mtime: uint64(time.Now().Unix()),
 				Ctime: uint64(time.Now().Unix()),
 			}
 			fs.Contents[fullpath] = data.Data
@@ -112,15 +114,16 @@ func (fs *ImageFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse
 
 func (fs *ImageFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntry, code fuse.Status) {
 	log.Printf("OpenDir name: %s", name)
+	fixName := name
 	if name == "" {
-		name = "/"
+		fixName = "/"
 	}
-	if entry, ok := fs.Entries[name]; ok {
+	if entry, ok := fs.Entries[fixName]; ok {
 		return ToDirEntries(entry), fuse.OK
 	} else {
-		var link, base string
-		if name == "/" {
-			link, base = fs.BaseUrl, ""
+		var link string
+		if name == "" {
+			link = fs.BaseUrl
 		} else {
 			fields := strings.Split(name, string(os.PathSeparator))
 			dirname := fields[len(fields)-1]
@@ -130,9 +133,8 @@ func (fs *ImageFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntr
 				log.Printf("url not found for %s", dirname)
 				return nil, fuse.ENOENT
 			}
-			base = filepath.Join(fields[:len(fields)-1]...)
 		}
-		entries, err := fs.getData(link, base)
+		entries, err := fs.getData(link, name)
 		if err != nil {
 			log.Printf("get data from src with error: %s", err)
 		} else {
