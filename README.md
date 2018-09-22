@@ -10,3 +10,4 @@ have fun
 - [ ] Better filename with urlencode
 - [ ] Image type pre detection, used for filename without extension and acceleration for dir list
 - [ ] CI support
+- [ ] Duplicate url optimization
