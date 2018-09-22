@@ -39,8 +39,8 @@ func getHtmlData(url string) ([]byte, error) {
 	return data, err
 }
 
-var imgRE = regexp.MustCompile(`<img[^>]+\bsrc=["'](https?://[^"']+)["']`)
-var hrefRE = regexp.MustCompile(`<a[^>]+\bhref=["'](https?://[^"']+)["']`)
+var imgRE = regexp.MustCompile(`<img[^>]+\bsrc=["']([^"'><]*?)["']`)
+var hrefRE = regexp.MustCompile(`<a[^>]+\bhref=["']([^"'><]*?)["']`)
 
 func findElems(htm string, re *regexp.Regexp) []string {
 	elems := re.FindAllStringSubmatch(htm, -1)
@@ -59,8 +59,9 @@ func findLinks(htm string) []string {
 	return findElems(htm, hrefRE)
 }
 
-func crawSublink(htm string, c chan<- CrawData) {
+func crawSublink(baseUrl string, htm string, c chan<- CrawData) {
 	var wg sync.WaitGroup
+	baseU, _ := url.Parse(baseUrl)
 	for _, link := range findLinks(htm) {
 		wg.Add(1)
 		go func(src string) {
@@ -70,6 +71,18 @@ func crawSublink(htm string, c chan<- CrawData) {
 				log.Printf("invalid url path: %s", src)
 				return
 			}
+
+			// igore none url such as "javascript:void(0)"
+			if u.Scheme == "javascript" {
+				return
+			}
+
+			// if href field is absolute path, join location host
+			if u.Scheme == "" {
+				src = baseU.Scheme + "://" + baseU.Host + "/" + u.Path
+				u.Scheme = baseU.Scheme
+			}
+
 			// we cannot use / in a filename
 			name := strings.Replace(
 				strings.TrimRight(
@@ -83,8 +96,9 @@ func crawSublink(htm string, c chan<- CrawData) {
 	close(c)
 }
 
-func crawlImg(htm string, c chan<- CrawData) {
+func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 	var wg sync.WaitGroup
+	baseU, _ := url.Parse(baseUrl)
 	for _, imgUrl := range findImages(htm) {
 		wg.Add(1)
 		go func(src string) {
@@ -94,6 +108,18 @@ func crawlImg(htm string, c chan<- CrawData) {
 				log.Printf("invalid url path: %s", src)
 				return
 			}
+
+			// igore none url such as "javascript:void(0)"
+			if u.Scheme == "javascript" {
+				return
+			}
+
+			// if href field is absolute path, join location host
+			if u.Scheme == "" && strings.HasPrefix(src, "/") {
+				src = baseU.Scheme + "://" + baseU.Host + "/" + u.Path
+				u.Scheme = baseU.Scheme
+			}
+
 			subPath := strings.Split(u.Path, "/")
 			filename := subPath[len(subPath)-1]
 			if len(filename) == 0 {
@@ -116,7 +142,7 @@ func crawlImg(htm string, c chan<- CrawData) {
 				log.Printf("read url data with error: %s", err)
 				return
 			}
-			c <- CrawData{filename, imgUrl, Image, raw}
+			c <- CrawData{filename, src, Image, raw}
 		}(imgUrl)
 	}
 	wg.Wait()
@@ -134,8 +160,8 @@ func Crawl(link string) ([]CrawData, error) {
 	html := string(data)
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go crawlImg(html, imgCh)
-	go crawSublink(html, urlCh)
+	go crawlImg(link, html, imgCh)
+	go crawSublink(link, html, urlCh)
 	go func() {
 		defer wg.Done()
 		for value := range imgCh {
