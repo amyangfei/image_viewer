@@ -22,7 +22,7 @@ type DirContents []fuse.DirEntry
 type ImageFs struct {
 	pathfs.FileSystem
 	Root    string
-	baseUrl string
+	BaseUrl string
 
 	// mapping from full path of a file to its fuse.Attr, including dir
 	Attrs map[string]fuse.Attr
@@ -51,9 +51,13 @@ func (fs *ImageFs) fullpath(src string, base string) string {
 	}
 }
 
-// GetData access to given url and returns images data and all hrefs
-func (fs *ImageFs) GetData(src string, base string) (DirContents, error) {
-	crawlData, err := Crawl(src)
+// getData accesses to given url and returns images data and all hrefs
+func (fs *ImageFs) getData(src string, base string, scheme string) (DirContents, error) {
+	link := src
+	if !strings.HasPrefix(src, "http://") && !strings.HasPrefix(src, "https://") {
+		link = scheme + "://" + src
+	}
+	crawlData, err := Crawl(link)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +67,7 @@ func (fs *ImageFs) GetData(src string, base string) (DirContents, error) {
 	}
 	fs.Entries[fixBase] = mapset.NewSet()
 	for _, data := range crawlData {
-		fullpath := filepath.Join(src, base)
+		fullpath := fs.fullpath(data.Name, base)
 		if data.Type == Image {
 			fs.Attrs[fullpath] = fuse.Attr{
 				Mode:  fuse.S_IFREG | 0644,
@@ -86,10 +90,18 @@ func (fs *ImageFs) GetData(src string, base string) (DirContents, error) {
 }
 
 func (fs *ImageFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
+	log.Printf("GetAttr name: %s", name)
 	if name == "" {
 		name = "/"
 	}
 	if attr, ok := fs.Attrs[name]; ok {
+		return &attr, fuse.OK
+	} else if name == "/" {
+		attr := fuse.Attr{
+			Mode:  fuse.S_IFDIR | 0755,
+			Ctime: uint64(time.Now().Unix()),
+		}
+		fs.Attrs[name] = attr
 		return &attr, fuse.OK
 	} else {
 		return nil, fuse.ENOENT
@@ -97,6 +109,7 @@ func (fs *ImageFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse
 }
 
 func (fs *ImageFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntry, code fuse.Status) {
+	log.Printf("OpenDir name: %s", name)
 	if name == "" {
 		name = "/"
 	}
@@ -105,13 +118,13 @@ func (fs *ImageFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntr
 	} else {
 		var src, base string
 		if name == "/" {
-			src, base = fs.Root, ""
+			src, base = fs.BaseUrl, ""
 		} else {
 			fields := strings.Split(name, string(os.PathSeparator))
 			src = fields[len(fields)-1]
 			base = filepath.Join(fields[:len(fields)-1]...)
 		}
-		entries, err := fs.GetData(src, base)
+		entries, err := fs.getData(src, base, "http")
 		if err != nil {
 			log.Printf("get data from src with error: %s", err)
 		} else {
@@ -122,6 +135,7 @@ func (fs *ImageFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntr
 }
 
 func (fs *ImageFs) Open(name string, flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
+	log.Printf("Open name: %s", name)
 	if data, ok := fs.Contents[name]; ok {
 		return nodefs.NewDataFile(data), fuse.OK
 	} else {
@@ -132,7 +146,8 @@ func (fs *ImageFs) Open(name string, flags uint32, context *fuse.Context) (file 
 func Serve(root string, baseUrl string) {
 	nfs := pathfs.NewPathNodeFs(&ImageFs{
 		FileSystem: pathfs.NewDefaultFileSystem(),
-		Root:       baseUrl,
+		Root:       root,
+		BaseUrl:    baseUrl,
 		Attrs:      make(map[string]fuse.Attr),
 		Contents:   make(map[string]FileData),
 		Entries:    make(map[string]DirEntrySet),
