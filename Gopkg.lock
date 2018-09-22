@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/blang/semver"
+  packages = ["."]
+  revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
+  version = "v3.5.1"
+
+[[projects]]
   name = "github.com/deckarep/golang-set"
   packages = ["."]
   revision = "cbaa98ba5575e67703b32b4b19f73c91f3c4159e"
@@ -27,6 +33,18 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/tebeka/selenium"
+  packages = [
+    ".",
+    "chrome",
+    "firefox",
+    "internal/zip",
+    "log"
+  ]
+  revision = "a49cf4b98a36c2b21b1ccb012852bd142d5fc04a"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
   revision = "d47a0f3392421c5624713c9a19fe781f651f8a50"
@@ -34,6 +52,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7d436968bb9efba9251cfc5b494bfd2776f694eb3e3c06ac9551040124c5a0a0"
+  inputs-digest = "2ebc3394a4e58c3a4ee8a1b044be88f1f991d5f18d8d49ab6ce25430802efe50"
   solver-name = "gps-cdcl"
   solver-version = 1
