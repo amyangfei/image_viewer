@@ -64,6 +64,7 @@ type MountOptions struct {
 	// Values shown in "df -T" and friends
 	// First column, "Filesystem"
 	FsName string
+
 	// Second column, "Type", will be shown as "fuse." + Name
 	Name string
 
@@ -76,6 +77,10 @@ type MountOptions struct {
 
 	// If set, print debugging information.
 	Debug bool
+
+	// If set, ask kernel to forward file locks to FUSE. If using,
+	// you must implement the GetLk/SetLk/SetLkw methods.
+	EnableLocks bool
 }
 
 // RawFileSystem is an interface close to the FUSE wire protocol.
@@ -92,7 +97,18 @@ type RawFileSystem interface {
 	// If called, provide debug output through the log package.
 	SetDebug(debug bool)
 
+	// Lookup is called by the kernel when the VFS wants to know
+	// about a file inside a directory. Many lookup calls can
+	// occur in parallel, but only one call happens for each (dir,
+	// name) pair.
 	Lookup(header *InHeader, name string, out *EntryOut) (status Status)
+
+	// Forget is called when the kernel discards entries from its
+	// dentry cache. This happens on unmount, and when the kernel
+	// is short on memory. Since it is not guaranteed to occur at
+	// any moment, and since there is no return value, Forget
+	// should not do I/O, as there is no channel to report back
+	// I/O errors.
 	Forget(nodeid, nlookup uint64)
 
 	// Attributes.
@@ -123,7 +139,10 @@ type RawFileSystem interface {
 	Open(input *OpenIn, out *OpenOut) (status Status)
 	Read(input *ReadIn, buf []byte) (ReadResult, Status)
 
-	Flock(input *FlockIn, flags int) (code Status)
+	// File locking
+	GetLk(input *LkIn, out *LkOut) (code Status)
+	SetLk(input *LkIn) (code Status)
+	SetLkw(input *LkIn) (code Status)
 
 	Release(input *ReleaseIn)
 	Write(input *WriteIn, data []byte) (written uint32, code Status)

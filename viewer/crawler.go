@@ -123,11 +123,7 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 			subPath := strings.Split(u.Path, "/")
 			filename := subPath[len(subPath)-1]
 			if len(filename) == 0 {
-				uid, err := uuid.NewV4()
-				if err != nil {
-					log.Printf("generage image name error: %s", err)
-					return
-				}
+				uid := uuid.NewV4()
 				filename = uid.String()
 			}
 

@@ -8,15 +8,16 @@
   version = "v1.7.1"
 
 [[projects]]
+  branch = "master"
   name = "github.com/hanwen/go-fuse"
   packages = [
     "fuse",
     "fuse/nodefs",
     "fuse/pathfs",
+    "internal/utimens",
     "splice"
   ]
-  revision = "5690be47d614355a22931c129e1075c25a62e9ac"
-  version = "v20170619"
+  revision = "1d35017e97018335f348413b3aeed67468d80f7b"
 
 [[projects]]
   name = "github.com/satori/go.uuid"
@@ -24,9 +25,15 @@
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
 
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "d47a0f3392421c5624713c9a19fe781f651f8a50"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4d22ae1bb46d3f62f4a03e7081575d95031ac7d76aaebaf059f1df8cb885d607"
+  inputs-digest = "7d436968bb9efba9251cfc5b494bfd2776f694eb3e3c06ac9551040124c5a0a0"
   solver-name = "gps-cdcl"
   solver-version = 1
