@@ -1,5 +1,7 @@
 # Simple Image Crawling and File System Mapping
 
+[![Build Status](https://travis-ci.org/amyangfei/image_viewer.svg?branch=master)](https://travis-ci.org/amyangfei/image_viewer)
+
 Have fun
 
 ## Build
