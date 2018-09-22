@@ -32,6 +32,6 @@ mv -f chromedriver /usr/local/bin/chromedriver
 - [x] Javascript simulator, eg chrome headless
 - [ ] Better filename against urlencode
 - [ ] Image type pre detection, used for filename without extension and acceleration for dir list
-- [ ] CI support
+- [x] CI support
 - [ ] Duplicate url optimization
 - [ ] Better url and img src extract strategy
