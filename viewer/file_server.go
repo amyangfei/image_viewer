@@ -94,7 +94,7 @@ func (fs *ImageFs) getData(link string, base string) (DirContents, error) {
 }
 
 func (fs *ImageFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
-	log.Printf("GetAttr name: %s", name)
+	// log.Printf("GetAttr name: %s", name)
 	if name == "" {
 		name = "/"
 	}
@@ -153,7 +153,7 @@ func (fs *ImageFs) Open(name string, flags uint32, context *fuse.Context) (file 
 	}
 }
 
-func Serve(root string, baseUrl string) {
+func Serve(root string, baseUrl string, opts *Options) {
 	fs := ImageFs{
 		FileSystem: pathfs.NewDefaultFileSystem(),
 		Root:       root,
@@ -168,5 +168,6 @@ func Serve(root string, baseUrl string) {
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)
 	}
+	log.Printf("fileserver starts now...\n")
 	server.Serve()
 }
