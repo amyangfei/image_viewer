@@ -32,6 +32,9 @@ type ImageFs struct {
 
 	// mapping from full path of a directory to all file entries under it
 	Entries map[string]DirEntrySet
+
+	// mapping from dir name to real url
+	Urls map[string]string
 }
 
 func ToDirEntries(set DirEntrySet) []fuse.DirEntry {
@@ -52,11 +55,7 @@ func (fs *ImageFs) fullpath(src string, base string) string {
 }
 
 // getData accesses to given url and returns images data and all hrefs
-func (fs *ImageFs) getData(src string, base string, scheme string) (DirContents, error) {
-	link := src
-	if !strings.HasPrefix(src, "http://") && !strings.HasPrefix(src, "https://") {
-		link = scheme + "://" + src
-	}
+func (fs *ImageFs) getData(link string, base string) (DirContents, error) {
 	crawlData, err := Crawl(link)
 	if err != nil {
 		return nil, err
@@ -80,10 +79,13 @@ func (fs *ImageFs) getData(src string, base string, scheme string) (DirContents,
 		} else if data.Type == Href {
 			fs.Attrs[fullpath] = fuse.Attr{
 				Mode:  fuse.S_IFDIR | 0755,
+				Atime: uint64(time.Now().Unix()),
+				Mtime: uint64(time.Now().Unix()),
 				Ctime: uint64(time.Now().Unix()),
 			}
 			fs.Entries[fixBase].Add(
 				fuse.DirEntry{Name: data.Name, Mode: fuse.S_IFDIR})
+			fs.Urls[data.Name] = data.Url
 		}
 	}
 	return ToDirEntries(fs.Entries[fixBase]), nil
@@ -116,15 +118,21 @@ func (fs *ImageFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntr
 	if entry, ok := fs.Entries[name]; ok {
 		return ToDirEntries(entry), fuse.OK
 	} else {
-		var src, base string
+		var link, base string
 		if name == "/" {
-			src, base = fs.BaseUrl, ""
+			link, base = fs.BaseUrl, ""
 		} else {
 			fields := strings.Split(name, string(os.PathSeparator))
-			src = fields[len(fields)-1]
+			dirname := fields[len(fields)-1]
+			var tok bool
+			if link, tok = fs.Urls[dirname]; !tok {
+				// should not here
+				log.Printf("url not found for %s", dirname)
+				return nil, fuse.ENOENT
+			}
 			base = filepath.Join(fields[:len(fields)-1]...)
 		}
-		entries, err := fs.getData(src, base, "http")
+		entries, err := fs.getData(link, base)
 		if err != nil {
 			log.Printf("get data from src with error: %s", err)
 		} else {
@@ -144,14 +152,16 @@ func (fs *ImageFs) Open(name string, flags uint32, context *fuse.Context) (file 
 }
 
 func Serve(root string, baseUrl string) {
-	nfs := pathfs.NewPathNodeFs(&ImageFs{
+	fs := ImageFs{
 		FileSystem: pathfs.NewDefaultFileSystem(),
 		Root:       root,
 		BaseUrl:    baseUrl,
 		Attrs:      make(map[string]fuse.Attr),
 		Contents:   make(map[string]FileData),
 		Entries:    make(map[string]DirEntrySet),
-	}, nil)
+		Urls:       make(map[string]string),
+	}
+	nfs := pathfs.NewPathNodeFs(&fs, nil)
 	server, _, err := nodefs.MountRoot(root, nfs.Root(), nil)
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)

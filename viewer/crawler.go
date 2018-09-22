@@ -22,6 +22,7 @@ const (
 
 type CrawData struct {
 	Name string
+	Url  string
 	Type DataType
 	Data []byte
 }
@@ -39,24 +40,52 @@ func getHtmlData(url string) ([]byte, error) {
 }
 
 var imgRE = regexp.MustCompile(`<img[^>]+\bsrc=["'](https?://[^"']+)["']`)
+var hrefRE = regexp.MustCompile(`<a[^>]+\bhref=["'](https?://[^"']+)["']`)
 
-func findImages(htm string) []string {
-	imgs := imgRE.FindAllStringSubmatch(htm, -1)
-	out := make([]string, len(imgs))
+func findElems(htm string, re *regexp.Regexp) []string {
+	elems := re.FindAllStringSubmatch(htm, -1)
+	out := make([]string, len(elems))
 	for i := range out {
-		out[i] = imgs[i][1]
+		out[i] = elems[i][1]
 	}
 	return out
 }
 
-func Crawl(link string) ([]CrawData, error) {
-	data, err := getHtmlData(link)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]CrawData, 0)
+func findImages(htm string) []string {
+	return findElems(htm, imgRE)
+}
+
+func findLinks(htm string) []string {
+	return findElems(htm, hrefRE)
+}
+
+func crawSublink(htm string, c chan<- CrawData) {
 	var wg sync.WaitGroup
-	for _, imgUrl := range findImages(string(data)) {
+	for _, link := range findLinks(htm) {
+		wg.Add(1)
+		go func(src string) {
+			defer wg.Done()
+			u, err := url.Parse(src)
+			if err != nil {
+				log.Printf("invalid url path: %s", src)
+				return
+			}
+			// we cannot use / in a filename
+			name := strings.Replace(
+				strings.TrimRight(
+					strings.TrimPrefix(src, u.Scheme+"://"),
+					"/"),
+				"/", "_", -1)
+			c <- CrawData{name, src, Href, nil}
+		}(link)
+	}
+	wg.Wait()
+	close(c)
+}
+
+func crawlImg(htm string, c chan<- CrawData) {
+	var wg sync.WaitGroup
+	for _, imgUrl := range findImages(htm) {
 		wg.Add(1)
 		go func(src string) {
 			defer wg.Done()
@@ -87,19 +116,38 @@ func Crawl(link string) ([]CrawData, error) {
 				log.Printf("read url data with error: %s", err)
 				return
 			}
-			result = append(result, CrawData{filename, Image, raw})
+			c <- CrawData{filename, imgUrl, Image, raw}
 		}(imgUrl)
 	}
 	wg.Wait()
-	return result, nil
+	close(c)
 }
 
-/*
-func main() {
-	link := "http://www.lofter.com/tag/365日摄影计划"
-	raw := Crawl(link)
-	for _, data := range raw {
-		log.Printf("name: %s, content length: %d", data.Name, len(data.Data))
+func Crawl(link string) ([]CrawData, error) {
+	data, err := getHtmlData(link)
+	if err != nil {
+		return nil, err
 	}
+	result := make([]CrawData, 0)
+	imgCh := make(chan CrawData)
+	urlCh := make(chan CrawData)
+	html := string(data)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go crawlImg(html, imgCh)
+	go crawSublink(html, urlCh)
+	go func() {
+		defer wg.Done()
+		for value := range imgCh {
+			result = append(result, value)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for value := range urlCh {
+			result = append(result, value)
+		}
+	}()
+	wg.Wait()
+	return result, nil
 }
-*/
