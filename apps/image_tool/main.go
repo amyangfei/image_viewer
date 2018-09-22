@@ -1,35 +1,48 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"github.com/amyangfei/image_viewer/viewer"
 	"os"
+
+	"github.com/amyangfei/image_viewer/viewer"
+	"github.com/jessevdk/go-flags"
 )
 
-var (
-	flagSet = flag.NewFlagSet("image_tool", flag.ExitOnError)
+var opts struct {
+	Headless bool `long:"headless" description:"whether use browser automation framework"`
 
-	headless    = flagSet.Bool("headless", false, "whether use browser automation framework")
-	showVersion = flagSet.Bool("version", false, "print version string")
-)
+	DriverPort int `long:"driver-port" default:"9515" description:"chrome driver port"`
+
+	ShowVersion bool `long:"version" description:"print version"`
+
+	FsInfo struct {
+		MountPoint string
+		Url        string
+	} `positional-args:"yes" required:"yes" description:"mount point and crawling url"`
+}
 
 func main() {
-	flagSet.Parse(os.Args[1:])
+	args := make([]string, len(os.Args)-1)
+	copy(args, os.Args[1:])
 
-	if *showVersion {
+	args, err := flags.NewParser(&opts, flags.PassDoubleDash|flags.HelpFlag).ParseArgs(args)
+	if err != nil {
+		if opts.ShowVersion {
+			fmt.Println(viewer.Version("image_tool"))
+			return
+		}
+		fmt.Println(err)
+		return
+	}
+
+	if opts.ShowVersion {
 		fmt.Println(viewer.Version("image_tool"))
 		return
 	}
 
-	flag.Parse()
-	if len(flag.Args()) < 2 {
-		fmt.Printf("Usage:\n image_tool MOUNTPOINT URL\n")
-		return
-	}
+	fsOpts := viewer.NewOptions()
+	fsOpts.Headless = opts.Headless
+	fsOpts.DriverPort = opts.DriverPort
 
-	opts := viewer.NewOptions()
-	opts.Headless = *headless
-
-	viewer.Serve(flag.Arg(0), flag.Arg(1), opts)
+	viewer.Serve(opts.FsInfo.MountPoint, opts.FsInfo.Url, fsOpts)
 }

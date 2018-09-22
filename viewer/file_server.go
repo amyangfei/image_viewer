@@ -13,6 +13,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/tebeka/selenium"
 )
 
 type FileData []byte
@@ -21,7 +22,11 @@ type DirContents []fuse.DirEntry
 
 type ImageFs struct {
 	pathfs.FileSystem
-	Root    string
+
+	// mountpoint
+	Root string
+
+	// root url for crawling
 	BaseUrl string
 
 	// mapping from full path of a file to its fuse.Attr, including dir
@@ -35,6 +40,15 @@ type ImageFs struct {
 
 	// mapping from dir name to real url
 	Urls map[string]string
+
+	// extra options
+	Options *Options
+
+	// headless browser driver service
+	DriverSrv *selenium.Service
+
+	// headless browser client
+	WebDriver selenium.WebDriver
 }
 
 func ToDirEntries(set DirEntrySet) []fuse.DirEntry {
@@ -56,7 +70,7 @@ func (fs *ImageFs) fullpath(src string, base string) string {
 
 // getData accesses to given url and returns images data and all hrefs
 func (fs *ImageFs) getData(link string, base string) (DirContents, error) {
-	crawlData, err := Crawl(link)
+	crawlData, err := Crawl(link, fs.Options.Headless, fs.WebDriver)
 	if err != nil {
 		return nil, err
 	}
@@ -162,12 +176,40 @@ func Serve(root string, baseUrl string, opts *Options) {
 		Contents:   make(map[string]FileData),
 		Entries:    make(map[string]DirEntrySet),
 		Urls:       make(map[string]string),
+		Options:    opts,
 	}
+
 	nfs := pathfs.NewPathNodeFs(&fs, nil)
 	server, _, err := nodefs.MountRoot(root, nfs.Root(), nil)
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)
 	}
+
+	var driverSrv *selenium.Service
+	var webDriver selenium.WebDriver
+
+	log.Printf("headless: %v port: %d", opts.Headless, opts.DriverPort)
+
+	if opts.Headless {
+		var err error
+		driverSrv, webDriver, err = StartChrome(fs.Options.DriverPort)
+		if err != nil {
+			log.Printf("start chrome with error: %s", err)
+			if driverSrv != nil {
+				driverSrv.Stop()
+			}
+			return
+		}
+		fs.DriverSrv = driverSrv
+		fs.WebDriver = webDriver
+	}
+	if driverSrv != nil {
+		defer driverSrv.Stop()
+	}
+	if webDriver != nil {
+		defer webDriver.Quit()
+	}
+
 	log.Printf("fileserver starts now...\n")
 	server.Serve()
 }

@@ -3,7 +3,6 @@
 package viewer
 
 import (
-	"github.com/satori/go.uuid"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -11,6 +10,9 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/satori/go.uuid"
+	"github.com/tebeka/selenium"
 )
 
 type DataType uint32
@@ -27,16 +29,26 @@ type CrawData struct {
 	Data []byte
 }
 
-func getHtmlData(url string) ([]byte, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Println("get url with error")
-		return nil, err
+func getHtmlData(url string, headless bool, driver selenium.WebDriver) ([]byte, error) {
+	if headless {
+		err := driver.Get(url)
+		if err != nil {
+			log.Printf("headless get url with error: %s", err)
+			return nil, err
+		}
+		data, err := driver.PageSource()
+		return []byte(data), err
+	} else {
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Printf("get url with error: %s\n", err)
+			return nil, err
+		}
+		defer resp.Body.Close()
+		body := resp.Body
+		data, err := ioutil.ReadAll(body)
+		return data, err
 	}
-	defer resp.Body.Close()
-	body := resp.Body
-	data, err := ioutil.ReadAll(body)
-	return data, err
 }
 
 var imgRE = regexp.MustCompile(`<img[^>]+\bsrc=["']([^"'><]*?)["']`)
@@ -147,8 +159,8 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 	close(c)
 }
 
-func Crawl(link string) ([]CrawData, error) {
-	data, err := getHtmlData(link)
+func Crawl(link string, headless bool, driver selenium.WebDriver) ([]CrawData, error) {
+	data, err := getHtmlData(link, headless, driver)
 	if err != nil {
 		return nil, err
 	}
