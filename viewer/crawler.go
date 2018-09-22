@@ -114,8 +114,10 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 				return
 			}
 
-			// if href field is absolute path, join location host
-			if u.Scheme == "" && strings.HasPrefix(src, "/") {
+			// If href field is absolute path, join location host.
+			// Img src without "/" prefix can redirect too, so we don't check
+			// prefix here.
+			if u.Scheme == "" {
 				src = baseU.Scheme + "://" + baseU.Host + "/" + u.Path
 				u.Scheme = baseU.Scheme
 			}
