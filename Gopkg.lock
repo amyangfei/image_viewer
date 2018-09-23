@@ -14,7 +14,6 @@
   version = "v1.7.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/hanwen/go-fuse"
   packages = [
     "fuse",
@@ -26,13 +25,18 @@
   revision = "1d35017e97018335f348413b3aeed67468d80f7b"
 
 [[projects]]
+  name = "github.com/jessevdk/go-flags"
+  packages = ["."]
+  revision = "c6ca198ec95c841fdb89fc0de7496fed11ab854e"
+  version = "v1.4.0"
+
+[[projects]]
   name = "github.com/satori/go.uuid"
   packages = ["."]
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/tebeka/selenium"
   packages = [
     ".",
@@ -52,6 +56,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2ebc3394a4e58c3a4ee8a1b044be88f1f991d5f18d8d49ab6ce25430802efe50"
+  inputs-digest = "e008c4b0ca0fcd0b6e45366150210b108f42eeb6f8307fb428644cc5aee5305d"
   solver-name = "gps-cdcl"
   solver-version = 1

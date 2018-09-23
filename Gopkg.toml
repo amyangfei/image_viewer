@@ -3,27 +3,6 @@
 # Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
-# required = ["github.com/user/thing/cmd/thing"]
-# ignored = ["github.com/user/project/pkgX", "bitbucket.org/user/project/pkgA/pkgY"]
-#
-# [[constraint]]
-#   name = "github.com/user/project"
-#   version = "1.0.0"
-#
-# [[constraint]]
-#   name = "github.com/user/project2"
-#   branch = "dev"
-#   source = "github.com/myfork/project2"
-#
-# [[override]]
-#   name = "github.com/x/y"
-#   version = "2.4.0"
-#
-# [prune]
-#   non-go = false
-#   go-tests = true
-#   unused-packages = true
-
 
 [[constraint]]
   name = "github.com/deckarep/golang-set"
@@ -31,7 +10,7 @@
 
 [[constraint]]
   name = "github.com/hanwen/go-fuse"
-  branch = "master"
+  revision = "1d35017e97018335f348413b3aeed67468d80f7b"
 
 [[constraint]]
   name = "github.com/satori/go.uuid"
@@ -39,7 +18,11 @@
 
 [[constraint]]
   name = "github.com/tebeka/selenium"
-  branch = "master"
+  revision = "a49cf4b98a36c2b21b1ccb012852bd142d5fc04a"
+
+[[constraint]]
+  name = "github.com/jessevdk/go-flags"
+  version = "1.4.0"
 
 [prune]
   go-tests = true
