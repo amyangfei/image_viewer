@@ -24,6 +24,14 @@
   name = "github.com/jessevdk/go-flags"
   version = "1.4.0"
 
+[[constraint]]
+  name = "github.com/PuerkitoBio/goquery"
+  version = "1.4.1"
+
+[[constraint]]
+  name = "github.com/teris-io/shortid"
+  revision = "771a37caa5cf0c81f585d7b6df4dfc77e0615b5c"
+
 [prune]
   go-tests = true
   unused-packages = true

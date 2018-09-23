@@ -2,6 +2,18 @@
 
 
 [[projects]]
+  name = "github.com/PuerkitoBio/goquery"
+  packages = ["."]
+  revision = "dc2ec5c7ca4d9aae063b79b9f581dd3ea6afd2b2"
+  version = "v1.4.1"
+
+[[projects]]
+  name = "github.com/andybalholm/cascadia"
+  packages = ["."]
+  revision = "901648c87902174f774fac311d7f176f8647bdaa"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/blang/semver"
   packages = ["."]
   revision = "2ee87856327ba09384cabd113bc6b5d174e9ec0f"
@@ -48,6 +60,20 @@
   revision = "a49cf4b98a36c2b21b1ccb012852bd142d5fc04a"
 
 [[projects]]
+  name = "github.com/teris-io/shortid"
+  packages = ["."]
+  revision = "771a37caa5cf0c81f585d7b6df4dfc77e0615b5c"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = [
+    "html",
+    "html/atom"
+  ]
+  revision = "2f5d2388922f370f4355f327fcf4cfe9f5583908"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
@@ -56,6 +82,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e008c4b0ca0fcd0b6e45366150210b108f42eeb6f8307fb428644cc5aee5305d"
+  inputs-digest = "a2a8903638eab1098759e9ed9799ab6484324f7a0f0fe389e90f1ff5ab3b8165"
   solver-name = "gps-cdcl"
   solver-version = 1
