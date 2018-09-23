@@ -3,6 +3,8 @@
 package viewer
 
 import (
+	"bytes"
+	"encoding/base64"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -29,6 +31,8 @@ type CrawData struct {
 	Data []byte
 }
 
+// getHtmlData visits url and returns page source, if headless is true,
+// javascript will also be executed
 func getHtmlData(url string, headless bool, driver selenium.WebDriver) ([]byte, error) {
 	if headless {
 		err := driver.Get(url)
@@ -128,6 +132,24 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 
 			// ignore base64 image
 			if u.Scheme == "data" && strings.HasPrefix(src, "data:image") {
+				i := strings.Index(src, ",")
+				if i < 0 {
+					log.Printf("invalid base64 image\n")
+				}
+				reader := base64.NewDecoder(base64.StdEncoding, strings.NewReader(src[i+1:]))
+				buffer := bytes.Buffer{}
+				_, err := buffer.ReadFrom(reader)
+				if err != nil {
+					log.Printf("read from base64 buffer error: %s", err)
+					return
+				}
+				fm, err := DetectImageType(buffer.Bytes())
+				if err != nil {
+					log.Printf("read image config error: %s", err)
+					return
+				}
+				filename := uuid.NewV4().String() + "." + fm
+				c <- CrawData{filename, src, Image, buffer.Bytes()}
 				return
 			}
 
