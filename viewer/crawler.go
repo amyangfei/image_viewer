@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/satori/go.uuid"
 	"github.com/tebeka/selenium"
 	"github.com/teris-io/shortid"
 )
@@ -114,7 +113,6 @@ func findImages2(htm string) []*ImageInfo {
 	doc.Find("html img").Each(func(i int, s *goquery.Selection) {
 		class, _ := s.Attr("class")
 		alt, _ := s.Attr("alt")
-		log.Printf("class: %s, alt: %s", class, alt)
 		src, exists := s.Attr("src")
 		if exists {
 			result = append(result, &ImageInfo{Src: src, Class: class, Alt: alt})
@@ -198,10 +196,7 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 					log.Printf("read image config error: %s", err)
 					return
 				}
-				fid, err := sid.Generate()
-				if err != nil {
-					fid = uuid.NewV4().String()
-				}
+				fid := RandomId(sid)
 				filename := info.Class + fid + "." + fm
 				c <- CrawData{filename, src, Image, buffer.Bytes()}
 				return
@@ -215,11 +210,20 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 				u.Scheme = baseU.Scheme
 			}
 
-			subPath := strings.Split(u.Path, "/")
-			filename := subPath[len(subPath)-1]
-			if len(filename) == 0 {
-				uid := uuid.NewV4()
-				filename = uid.String()
+			filename := ""
+			needExpandExt := false
+			if info.Alt != "" {
+				// Get filename from alt information
+				fid := RandomId(sid)
+				filename = info.Alt + fid
+				needExpandExt = true
+			} else {
+				// Get filename from last path field
+				subPath := strings.Split(u.Path, "/")
+				filename = subPath[len(subPath)-1]
+				if len(filename) == 0 {
+					filename = RandomId(sid)
+				}
 			}
 
 			resp, err := http.Get(src)
@@ -233,6 +237,15 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 				log.Printf("read url data with error: %s", err)
 				return
 			}
+
+			// Complete file extension if needed
+			if needExpandExt {
+				ext, err := DetectImageType(raw)
+				if err == nil {
+					filename = filename + "." + ext
+				}
+			}
+
 			c <- CrawData{filename, src, Image, raw}
 		}(imgInfo)
 	}
