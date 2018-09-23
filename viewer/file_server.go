@@ -93,6 +93,10 @@ func (fs *ImageFs) getData(link string, base string) (DirContents, error) {
 			fs.Entries[fixBase].Add(
 				fuse.DirEntry{Name: data.Name, Mode: fuse.S_IFREG})
 		} else if data.Type == Href {
+			// ignore self redirect url
+			if data.Url == link {
+				continue
+			}
 			fs.Attrs[fullpath] = fuse.Attr{
 				Mode:  fuse.S_IFDIR | 0755,
 				Atime: uint64(time.Now().Unix()),
@@ -187,8 +191,6 @@ func Serve(root string, baseUrl string, opts *Options) {
 
 	var driverSrv *selenium.Service
 	var webDriver selenium.WebDriver
-
-	log.Printf("headless: %v port: %d", opts.Headless, opts.DriverPort)
 
 	if opts.Headless {
 		var err error

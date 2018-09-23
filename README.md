@@ -39,5 +39,5 @@ $ mv -f chromedriver /usr/local/bin/chromedriver
 - [ ] Better filename against urlencode
 - [ ] Image type pre detection, used for filename without extension and acceleration for dir list
 - [x] CI support
-- [ ] Duplicate url optimization
+- [x] Duplicate url optimization
 - [ ] Better url and img src extract strategy
