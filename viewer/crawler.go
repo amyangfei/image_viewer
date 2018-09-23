@@ -13,8 +13,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/satori/go.uuid"
 	"github.com/tebeka/selenium"
+	"github.com/teris-io/shortid"
 )
 
 type DataType uint32
@@ -23,6 +25,12 @@ const (
 	Image DataType = iota
 	Href
 )
+
+type ImageInfo struct {
+	Src   string
+	Class string
+	Alt   string
+}
 
 type CrawData struct {
 	Name string
@@ -67,18 +75,58 @@ func findElems(htm string, re *regexp.Regexp) []string {
 	return out
 }
 
-func findImages(htm string) []string {
-	return findElems(htm, imgRE)
-}
-
 func findLinks(htm string) []string {
 	return findElems(htm, hrefRE)
+}
+
+func findImages(htm string) []*ImageInfo {
+	urls := findElems(htm, imgRE)
+	result := make([]*ImageInfo, 0)
+	for _, u := range urls {
+		result = append(result, &ImageInfo{Src: u, Class: "", Alt: ""})
+	}
+	return result
+}
+
+func findLinks2(htm string) []string {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader([]byte(htm)))
+	if err != nil {
+		log.Printf("go query parse error: %s", err)
+		return findLinks(htm)
+	}
+	result := make([]string, 0)
+	doc.Find("html a").Each(func(i int, s *goquery.Selection) {
+		href, exists := s.Attr("href")
+		if exists {
+			result = append(result, href)
+		}
+	})
+	return result
+}
+
+func findImages2(htm string) []*ImageInfo {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader([]byte(htm)))
+	if err != nil {
+		log.Printf("go query parse error: %s", err)
+		return findImages(htm)
+	}
+	result := make([]*ImageInfo, 0)
+	doc.Find("html img").Each(func(i int, s *goquery.Selection) {
+		class, _ := s.Attr("class")
+		alt, _ := s.Attr("alt")
+		log.Printf("class: %s, alt: %s", class, alt)
+		src, exists := s.Attr("src")
+		if exists {
+			result = append(result, &ImageInfo{Src: src, Class: class, Alt: alt})
+		}
+	})
+	return result
 }
 
 func crawSublink(baseUrl string, htm string, c chan<- CrawData) {
 	var wg sync.WaitGroup
 	baseU, _ := url.Parse(baseUrl)
-	for _, link := range findLinks(htm) {
+	for _, link := range findLinks2(htm) {
 		wg.Add(1)
 		go func(src string) {
 			defer wg.Done()
@@ -113,12 +161,14 @@ func crawSublink(baseUrl string, htm string, c chan<- CrawData) {
 }
 
 func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
+	sid, _ := shortid.New(1, shortid.DefaultABC, 2342)
 	var wg sync.WaitGroup
 	baseU, _ := url.Parse(baseUrl)
-	for _, imgUrl := range findImages(htm) {
+	for _, imgInfo := range findImages2(htm) {
 		wg.Add(1)
-		go func(src string) {
+		go func(info *ImageInfo) {
 			defer wg.Done()
+			src := info.Src
 			u, err := url.Parse(src)
 			if err != nil {
 				log.Printf("invalid url path: %s", src)
@@ -148,7 +198,11 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 					log.Printf("read image config error: %s", err)
 					return
 				}
-				filename := uuid.NewV4().String() + "." + fm
+				fid, err := sid.Generate()
+				if err != nil {
+					fid = uuid.NewV4().String()
+				}
+				filename := info.Class + fid + "." + fm
 				c <- CrawData{filename, src, Image, buffer.Bytes()}
 				return
 			}
@@ -180,7 +234,7 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 				return
 			}
 			c <- CrawData{filename, src, Image, raw}
-		}(imgUrl)
+		}(imgInfo)
 	}
 	wg.Wait()
 	close(c)
