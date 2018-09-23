@@ -36,8 +36,9 @@ $ mv -f chromedriver /usr/local/bin/chromedriver
 - [ ] Add test case
 - [x] Dependency management
 - [x] Javascript simulator, eg chrome headless
-- [ ] Better filename against urlencode
-- [ ] Image type pre detection, used for filename without extension and acceleration for dir list
+- [x] Better filename against urlencode
+- [x] Image type detection, used for filename without extension
+- [ ] Image pre load acceleration for dir list
 - [x] CI support
 - [x] Duplicate url optimization
-- [ ] Better url and img src extract strategy
+- [x] Better url and img src extract strategy
