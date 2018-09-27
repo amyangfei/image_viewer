@@ -121,7 +121,7 @@ func findImages2(htm string) []*ImageInfo {
 	return result
 }
 
-func crawSublink(baseUrl string, htm string, c chan<- CrawData) {
+func crawSublink(baseUrl string, htm string, c chan<- CrawData, notifyWG *sync.WaitGroup) {
 	var wg sync.WaitGroup
 	baseU, _ := url.Parse(baseUrl)
 	for _, link := range findLinks2(htm) {
@@ -155,10 +155,10 @@ func crawSublink(baseUrl string, htm string, c chan<- CrawData) {
 		}(link)
 	}
 	wg.Wait()
-	close(c)
+	notifyWG.Done()
 }
 
-func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
+func crawlImg(baseUrl string, htm string, c chan<- CrawData, notifyWG *sync.WaitGroup) {
 	sid, _ := shortid.New(1, shortid.DefaultABC, 2342)
 	var wg sync.WaitGroup
 	baseU, _ := url.Parse(baseUrl)
@@ -250,7 +250,7 @@ func crawlImg(baseUrl string, htm string, c chan<- CrawData) {
 		}(imgInfo)
 	}
 	wg.Wait()
-	close(c)
+	notifyWG.Done()
 }
 
 func Crawl(link string, headless bool, driver selenium.WebDriver) ([]CrawData, error) {
@@ -258,26 +258,19 @@ func Crawl(link string, headless bool, driver selenium.WebDriver) ([]CrawData, e
 	if err != nil {
 		return nil, err
 	}
-	result := make([]CrawData, 0)
-	imgCh := make(chan CrawData)
-	urlCh := make(chan CrawData)
-	html := string(data)
 	var wg sync.WaitGroup
+	html := string(data)
+	result := make([]CrawData, 0)
+	resultCh := make(chan CrawData)
 	wg.Add(2)
-	go crawlImg(link, html, imgCh)
-	go crawSublink(link, html, urlCh)
+	go crawlImg(link, html, resultCh, &wg)
+	go crawSublink(link, html, resultCh, &wg)
 	go func() {
-		defer wg.Done()
-		for value := range imgCh {
-			result = append(result, value)
-		}
+		wg.Wait()
+		close(resultCh)
 	}()
-	go func() {
-		defer wg.Done()
-		for value := range urlCh {
-			result = append(result, value)
-		}
-	}()
-	wg.Wait()
+	for value := range resultCh {
+		result = append(result, value)
+	}
 	return result, nil
 }
